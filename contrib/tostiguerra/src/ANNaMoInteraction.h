@@ -85,6 +85,11 @@ protected:
 	number _semiflex_gauss_xi = -1.0;
 	number _stacking_eta;
 
+	/// v2 DS semiflexibility potential (placeholder defaults, pending fitting)
+	bool _enable_semiflex_ds = false;
+	number _semiflex_ds_k = 4.0;  // k_ds, placeholder pending fitting
+	number _sf_r0 = 0.22;          // r0 for smoothstep switching function, placeholder pending fitting
+
 	/// patchy stuff
 	number _deltaPatchMon = 0.5;
 

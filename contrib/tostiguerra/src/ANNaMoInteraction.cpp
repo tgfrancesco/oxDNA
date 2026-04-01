@@ -41,6 +41,30 @@ void CGNucleicAcidsInteraction::get_settings(input_file &inp)
 		_3b_range = 1.6;
 	}
 
+	if (_annamo_version == 2)
+	{
+		// Inherit v1 base parameters
+		_3b_sigma = 0.21875;
+		_deltaPatchMon = 0.65;
+		_nn_dS_offset = -7.5;
+		_nn_alpha = 0.89397;
+		bdG_threshold = 0.0;
+		_enable_semiflexibility = false;
+		_semiflexibility_k = 11.0;
+		_semiflexibility_a1 = 1.0;
+		_enable_semiflexibility_3b = true;
+		_semiflex_gauss_k = 4.0;
+		_enable_patch_stacking = true;
+		_stacking_eta = 6.0;
+		_bead_size = 3;
+		_semiflex_gauss_xi = 0.07;
+		_3b_range = 1.6;
+		// v2-specific parameters (placeholders pending fitting)
+		_enable_semiflex_ds = true;
+		_semiflex_ds_k = 4.0;
+		_sf_r0 = 0.22;
+	}
+
 	getInputInt(&inp, "DPS_n", &_PS_n, 0);
 
 	getInputNumber(&inp, "DPS_alpha", &_PS_alpha, 0);
@@ -139,6 +163,10 @@ void CGNucleicAcidsInteraction::get_settings(input_file &inp)
 	}
 
 	getInputInt(&inp, "DPS_bead_size", &_bead_size, 0);
+
+	getInputBool(&inp, "ANNAMO_enable_semiflex_ds", &_enable_semiflex_ds, 0);
+	getInputNumber(&inp, "ANNAMO_semiflex_ds_k", &_semiflex_ds_k, 0);
+	getInputNumber(&inp, "ANNAMO_sf_r0", &_sf_r0, 0);
 }
 
 void CGNucleicAcidsInteraction::init()
@@ -194,6 +222,13 @@ void CGNucleicAcidsInteraction::init()
 
 		// if we use mbf, we should tell the user
 		OX_LOG(Logger::LOG_INFO, "CGNA: using a maximum backbone force of %g (xmax = %g, Emax = %g, A = %g, B = %g)", _mbf_fmax, _mbf_xmax, _mbf_Emax, _mbf_A, _mbf_B);
+	}
+
+	if (_annamo_version == 2)
+	{
+		OX_LOG(Logger::LOG_WARNING, "ANNAMO: version 2 selected. The DS semiflexibility potential parameters "
+			"(_semiflex_ds_k = %g, _sf_r0 = %g) are placeholders pending fitting and should not be used for production runs.",
+			_semiflex_ds_k, _sf_r0);
 	}
 }
 
