@@ -350,14 +350,70 @@ void CGNucleicAcidsInteraction::begin_energy_computation()
 				_Pi[q->index] *= (1. - s_pq);
 			}
 		}
+
+		// Pass 3: angular energy and forces for every interior bead.
+		// Energy is stored per bead in _semiflex_ds_e[] and returned from
+		// pair_interaction_bonded() when the canonical pair (q->n3 == p) is processed.
+		// Forces are applied only during force computation (_is_force_computation == true)
+		// to leave particle force vectors untouched in energy-only (MC) contexts.
+		_semiflex_ds_e.assign(N, 0.);
+
+		for (auto p : CONFIG_INFO->particles())
+		{
+			if (p->n3 == P_VIRTUAL || p->n5 == P_VIRTUAL)
+			{
+				continue;
+			}
+
+			int idx = p->index;
+			number h_i = 1. - _Pi[idx];
+			_semiflex_ds_e[idx] = _semiflex_ds_k * h_i * _U[idx];
+
+			if (_is_force_computation)
+			{
+				number coeff = -_semiflex_ds_k * h_i;
+				LR_vector F_n3 = _dU_dn3[idx] * coeff;
+				LR_vector F_mid = _dU_mid[idx] * coeff;
+				LR_vector F_n5 = _dU_dn5[idx] * coeff;
+
+				p->n3->force += F_n3;
+				p->force += F_mid;
+				p->n5->force += F_n5;
+
+				// Pair-decomposed virial: decompose into (mid→n3) and (mid→n5) virtual bonds.
+				// Combined: r_mid * F_mid + r_n3_pbc * F_n3 + r_n5_pbc * F_n5.
+				LR_vector r_mid_n3 = _box->min_image(p->pos, p->n3->pos);
+				LR_vector r_mid_n5 = _box->min_image(p->pos, p->n5->pos);
+
+				_update_stress_tensor(p->pos, F_mid);
+				_update_stress_tensor(p->pos + r_mid_n3, F_n3);
+				_update_stress_tensor(p->pos + r_mid_n5, F_n5);
+
+				// Inter-chain stress (will not trigger for intra-chain bonded triplets;
+				// included for correctness if topology ever has cross-chain bonds)
+				if (p->strand_id != p->n3->strand_id)
+				{
+					_update_inter_chain_stress_tensor(p->strand_id, p->strand_id, -F_n3);
+					_update_inter_chain_stress_tensor(p->n3->strand_id, p->strand_id, F_n3);
+				}
+				if (p->strand_id != p->n5->strand_id)
+				{
+					_update_inter_chain_stress_tensor(p->strand_id, p->strand_id, -F_n5);
+					_update_inter_chain_stress_tensor(p->n5->strand_id, p->strand_id, F_n5);
+				}
+			}
+		}
 	}
 }
 
 void CGNucleicAcidsInteraction::begin_energy_and_force_computation()
 {
-	BaseInteraction::begin_energy_and_force_computation();
-
+	// Zero _inter_chain_stress_tensor BEFORE the base call, which calls begin_energy_computation()
+	// and therefore runs Pass 3. If we zeroed after, Pass 3 contributions would be erased.
+	_is_force_computation = true;
 	std::fill(_inter_chain_stress_tensor.begin(), _inter_chain_stress_tensor.end(), 0.);
+	BaseInteraction::begin_energy_and_force_computation();
+	_is_force_computation = false;
 }
 
 bool CGNucleicAcidsInteraction::has_custom_stress_tensor() const
@@ -756,6 +812,15 @@ number CGNucleicAcidsInteraction::pair_interaction_bonded(BaseParticle *p, BaseP
 		if (_enable_patch_stacking)
 		{
 			energy += _patch_stacking(p, q, update_forces);
+		}
+
+		// Pass 3 energy: returned here using the canonical pair q->n3 == p.
+		// For a linear chain with sequential indices, pair_interaction_bonded(p, q)
+		// is called with p->index < q->index, so q->n3 == p selects the pair
+		// (q's-3'-neighbour, q) — exactly once per interior bead q.
+		if (_annamo_version == 2 && _enable_semiflex_ds && q->n3 == p)
+		{
+			energy += _semiflex_ds_e[q->index];
 		}
 
 		if (_enable_semiflexibility_3b)

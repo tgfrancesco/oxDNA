@@ -95,7 +95,12 @@ protected:
 	std::vector<LR_vector> _dU_dn3; // grad U_i w.r.t. n3 position                  (Pass 1)
 	std::vector<LR_vector> _dU_mid; // grad U_i w.r.t. middle bead position          (Pass 1)
 	std::vector<LR_vector> _dU_dn5; // grad U_i w.r.t. n5 position                  (Pass 1)
-	std::vector<number> _Pi;        // Pi_i = prod_j(1 - s_ij), initialised to 1.0  (Pass 2)
+	std::vector<number> _Pi;           // Pi_i = prod_j(1 - s_ij), initialised to 1.0  (Pass 2)
+	std::vector<number> _semiflex_ds_e; // k_ds * h_i * U_i per interior bead           (Pass 3)
+
+	// true only during begin_energy_and_force_computation(); used to guard force
+	// application in Pass 3 against energy-only (MC) calls to begin_energy_computation()
+	bool _is_force_computation = false;
 
 	/// patchy stuff
 	number _deltaPatchMon = 0.5;
