@@ -52,7 +52,7 @@ void CGNucleicAcidsInteraction::get_settings(input_file &inp)
 		_enable_semiflexibility = false;
 		_semiflexibility_k = 11.0;
 		_semiflexibility_a1 = 1.0;
-		_enable_semiflexibility_3b = true;
+		_enable_semiflexibility_3b = false; // v2 doesn't use the Gaussian potential for semiflexibility, but rather a new potential that depends on the distance between the outer particles, so we disable the Gaussian 3b potential in favor of the new one
 		_semiflex_gauss_k = 4.0;
 		_enable_patch_stacking = true;
 		_stacking_eta = 6.0;
@@ -227,8 +227,8 @@ void CGNucleicAcidsInteraction::init()
 	if (_annamo_version == 2)
 	{
 		OX_LOG(Logger::LOG_WARNING, "ANNAMO: version 2 selected. The DS semiflexibility potential parameters "
-			"(_semiflex_ds_k = %g, _sf_r0 = %g) are placeholders pending fitting and should not be used for production runs.",
-			_semiflex_ds_k, _sf_r0);
+									"(_semiflex_ds_k = %g, _sf_r0 = %g) are placeholders pending fitting and should not be used for production runs.",
+			   _semiflex_ds_k, _sf_r0);
 	}
 }
 
