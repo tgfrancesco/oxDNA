@@ -303,8 +303,8 @@ void CGNucleicAcidsInteraction::begin_energy_computation()
 		}
 
 		// Pass 2: accumulate _Pi[i] = prod_j(1 - s_ij) via the neighbour list.
-		// get_neigh_list(p) returns a half-list (q->index < p->index only), so
-		// each pair is visited exactly once without any additional index guard.
+		// The index guard below ensures each pair is visited exactly once in both
+		// MD (half-list) and MC (full-list) contexts.
 		_Pi.assign(N, 1.);
 
 		number sf_width = _3b_rcut - _sf_r0;
@@ -319,6 +319,11 @@ void CGNucleicAcidsInteraction::begin_energy_computation()
 				}
 
 				if (!_sticky_interaction(p->btype, q->btype))
+				{
+					continue;
+				}
+
+				if (q->index >= p->index)
 				{
 					continue;
 				}
