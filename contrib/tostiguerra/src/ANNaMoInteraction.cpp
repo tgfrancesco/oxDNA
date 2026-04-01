@@ -301,6 +301,49 @@ void CGNucleicAcidsInteraction::begin_energy_computation()
 			_dU_mid[idx] = dist_pn2 * force_mod_n2 - dist_pn1 * force_mod_n1;
 			_dU_dn5[idx] = dist_pn1 * i_pn1_pn2 - dist_pn2 * cost_n2;
 		}
+
+		// Pass 2: accumulate _Pi[i] = prod_j(1 - s_ij) via the neighbour list.
+		// get_neigh_list(p) returns a half-list (q->index < p->index only), so
+		// each pair is visited exactly once without any additional index guard.
+		_Pi.assign(N, 1.);
+
+		number sf_width = _3b_rcut - _sf_r0;
+
+		for (auto p : CONFIG_INFO->particles())
+		{
+			for (auto q : CONFIG_INFO->lists->get_neigh_list(p))
+			{
+				if (p->is_bonded(q))
+				{
+					continue;
+				}
+
+				if (!_sticky_interaction(p->btype, q->btype))
+				{
+					continue;
+				}
+
+				LR_vector r_pq = _box->min_image(p->pos, q->pos);
+				LR_vector patch_dist = r_pq + q->int_centers[0] - p->int_centers[0];
+				number sqr_patch = patch_dist.norm();
+
+				if (sqr_patch >= _sqr_3b_rcut)
+				{
+					continue;
+				}
+
+				number r = sqrt(sqr_patch);
+
+				number t = (r - _sf_r0) / sf_width;
+				if (t < 0.) t = 0.;
+
+				// smoothstep: s = 1 - 3t^2 + 2t^3, equals 1 at r <= _sf_r0 and 0 at r >= _3b_rcut
+				number s_pq = 1. - t * t * (3. - 2. * t);
+
+				_Pi[p->index] *= (1. - s_pq);
+				_Pi[q->index] *= (1. - s_pq);
+			}
+		}
 	}
 }
 
