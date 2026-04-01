@@ -341,6 +341,7 @@ void CGNucleicAcidsInteraction::begin_energy_computation()
 
 				number t = (r - _sf_r0) / sf_width;
 				if (t < 0.) t = 0.;
+				if (t > 1.) t = 1.;
 
 				// smoothstep: s = 1 - 3t^2 + 2t^3, equals 1 at r <= _sf_r0 and 0 at r >= _3b_rcut
 				number s_pq = 1. - t * t * (3. - 2. * t);
