@@ -555,6 +555,49 @@ number CGNucleicAcidsInteraction::_sticky(BaseParticle *p, BaseParticle *q, bool
 			number epsilon = _3b_epsilon[p->btype * _interaction_matrix_size + q->btype];
 
 			number r_mod = sqrt(sqr_r);
+
+			// v2 DS semiflexibility: radial forces and torques from grad(h_i)
+			if (_annamo_version == 2 && _enable_semiflex_ds && update_forces)
+			{
+				number sf_width = _3b_rcut - _sf_r0;
+				number t = (r_mod - _sf_r0) / sf_width;
+				if (t < 0.) t = 0.;
+				if (t > 1.) t = 1.;
+
+				// ds/dr = 0 at both endpoints; guard avoids 0/0 in Pi/(1-s_pq)
+				number ds_dr = (r_mod <= _sf_r0 || r_mod >= _3b_rcut) ? 0. :
+				               (-6. * t + 6. * t * t) / sf_width;
+
+				if (ds_dr != 0.)
+				{
+					number s_pq = 1. - t * t * (3. - 2. * t);
+					number one_minus_s = 1. - s_pq;
+
+					// Pi_without = product of (1-s_kj) for all k≠this pair
+					number dh_p = (_Pi[p->index] / one_minus_s) * ds_dr;
+					number dh_q = (_Pi[q->index] / one_minus_s) * ds_dr;
+
+					number coeff = -_semiflex_ds_k * (dh_p * _U[p->index] + dh_q * _U[q->index]);
+					LR_vector F_p = patch_dist * (coeff / r_mod);
+					LR_vector F_q = -F_p;
+
+					p->force += F_p;
+					q->force += F_q;
+
+					p->torque += p->orientationT * (p_patch_pos.cross(F_p));
+					q->torque += q->orientationT * (q_patch_pos.cross(F_q));
+
+					_update_stress_tensor(p->pos, F_p);
+					_update_stress_tensor(p->pos + _computed_r, F_q);
+
+					if (p->strand_id != q->strand_id)
+					{
+						_update_inter_chain_stress_tensor(p->strand_id, p->strand_id, F_p);
+						_update_inter_chain_stress_tensor(q->strand_id, p->strand_id, F_q);
+					}
+				}
+			}
+
 			number exp_part = exp(_3b_sigma / (r_mod - _3b_rcut));
 			number Vradial = epsilon * _3b_A_part * exp_part * (_3b_B_part / SQR(sqr_r) - 1.);
 
