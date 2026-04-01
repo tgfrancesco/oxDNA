@@ -266,6 +266,42 @@ void CGNucleicAcidsInteraction::begin_energy_computation()
 	}
 
 	_bonds.clear();
+
+	if (_annamo_version == 2 && _enable_semiflex_ds)
+	{
+		int N = CONFIG_INFO->N();
+		_U.assign(N, 0.);
+		_dU_dn3.assign(N, LR_vector(0., 0., 0.));
+		_dU_mid.assign(N, LR_vector(0., 0., 0.));
+		_dU_dn5.assign(N, LR_vector(0., 0., 0.));
+
+		for (auto p : CONFIG_INFO->particles())
+		{
+			if (p->n3 == P_VIRTUAL || p->n5 == P_VIRTUAL)
+			{
+				continue;
+			}
+
+			LR_vector dist_pn1 = _box->min_image(p->pos, p->n3->pos);
+			LR_vector dist_pn2 = _box->min_image(p->n5->pos, p->pos);
+
+			number sqr_dist_pn1 = dist_pn1.norm();
+			number sqr_dist_pn2 = dist_pn2.norm();
+			number i_pn1_pn2 = 1. / sqrt(sqr_dist_pn1 * sqr_dist_pn2);
+			number cost = (dist_pn1 * dist_pn2) * i_pn1_pn2;
+
+			number cost_n1 = cost / sqr_dist_pn1;
+			number cost_n2 = cost / sqr_dist_pn2;
+			number force_mod_n1 = i_pn1_pn2 + cost_n1;
+			number force_mod_n2 = i_pn1_pn2 + cost_n2;
+
+			int idx = p->index;
+			_U[idx] = 1. - cost;
+			_dU_dn3[idx] = dist_pn1 * cost_n1 - dist_pn2 * i_pn1_pn2;
+			_dU_mid[idx] = dist_pn2 * force_mod_n2 - dist_pn1 * force_mod_n1;
+			_dU_dn5[idx] = dist_pn1 * i_pn1_pn2 - dist_pn2 * cost_n2;
+		}
+	}
 }
 
 void CGNucleicAcidsInteraction::begin_energy_and_force_computation()

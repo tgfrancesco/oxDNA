@@ -90,6 +90,12 @@ protected:
 	number _semiflex_ds_k = 4.0;  // k_ds, placeholder pending fitting
 	number _sf_r0 = 0.22;          // r0 for smoothstep switching function, placeholder pending fitting
 
+	/// per-particle arrays for the v2 DS semiflexibility Pass 1 (resized/reset each step)
+	std::vector<number> _U;         // U_i = 1 - cos(theta_i)
+	std::vector<LR_vector> _dU_dn3; // grad U_i w.r.t. n3 position
+	std::vector<LR_vector> _dU_mid; // grad U_i w.r.t. middle bead position
+	std::vector<LR_vector> _dU_dn5; // grad U_i w.r.t. n5 position
+
 	/// patchy stuff
 	number _deltaPatchMon = 0.5;
 
