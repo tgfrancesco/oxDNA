@@ -340,8 +340,10 @@ void CGNucleicAcidsInteraction::begin_energy_computation()
 				number r = sqrt(sqr_patch);
 
 				number t = (r - _sf_r0) / sf_width;
-				if (t < 0.) t = 0.;
-				if (t > 1.) t = 1.;
+				if (t < 0.)
+					t = 0.;
+				if (t > 1.)
+					t = 1.;
 
 				// smoothstep: s = 1 - 3t^2 + 2t^3, equals 1 at r <= _sf_r0 and 0 at r >= _3b_rcut
 				number s_pq = 1. - t * t * (3. - 2. * t);
@@ -561,12 +563,13 @@ number CGNucleicAcidsInteraction::_sticky(BaseParticle *p, BaseParticle *q, bool
 			{
 				number sf_width = _3b_rcut - _sf_r0;
 				number t = (r_mod - _sf_r0) / sf_width;
-				if (t < 0.) t = 0.;
-				if (t > 1.) t = 1.;
+				if (t < 0.)
+					t = 0.;
+				if (t > 1.)
+					t = 1.;
 
 				// ds/dr = 0 at both endpoints; guard avoids 0/0 in Pi/(1-s_pq)
-				number ds_dr = (r_mod <= _sf_r0 || r_mod >= _3b_rcut) ? 0. :
-				               (-6. * t + 6. * t * t) / sf_width;
+				number ds_dr = (r_mod <= _sf_r0 || r_mod >= _3b_rcut) ? 0. : (-6. * t + 6. * t * t) / sf_width;
 
 				if (ds_dr != 0.)
 				{
@@ -577,7 +580,7 @@ number CGNucleicAcidsInteraction::_sticky(BaseParticle *p, BaseParticle *q, bool
 					number dh_p = (_Pi[p->index] / one_minus_s) * ds_dr;
 					number dh_q = (_Pi[q->index] / one_minus_s) * ds_dr;
 
-					number coeff = -_semiflex_ds_k * (dh_p * _U[p->index] + dh_q * _U[q->index]);
+					number coeff = _semiflex_ds_k * (dh_p * _U[p->index] + dh_q * _U[q->index]);
 					LR_vector F_p = patch_dist * (coeff / r_mod);
 					LR_vector F_q = -F_p;
 
